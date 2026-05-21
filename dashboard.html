@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tourist Master Dashboard - ระบบแสดงผลทุกจุดติดตั้ง</title>
+    <title>Tourist Master Dashboard - ระบบลงชื่อเข้าใช้งาน</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,6 +27,38 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; background-color: var(--bg-main); color: var(--text-light); font-family: 'Chakra Petch', sans-serif; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* 🔒 หน้าต่างบังคับกรอกรหัสผ่าน (Login Layer) */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-main); z-index: 9999;
+            display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .login-box {
+            background-color: var(--panel-bg); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 30px; width: 100%; max-width: 400px;
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        .login-box h3 { color: var(--gold-light); margin-bottom: 8px; font-size: 20px; }
+        .login-box p { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+        .password-input {
+            width: 100%; padding: 12px; background: #141414; border: 1px solid var(--border-color);
+            border-radius: 8px; color: white; font-size: 18px; text-align: center;
+            letter-spacing: 4px; margin-bottom: 15px; font-family: sans-serif;
+        }
+        .password-input:focus { border-color: var(--gold); outline: none; }
+        .btn-login {
+            width: 100%; padding: 12px; background-color: var(--gold); color: #000;
+            border: none; border-radius: 8px; font-weight: 700; font-size: 16px;
+            cursor: pointer; font-family: 'Chakra Petch', sans-serif; transition: background 0.2s;
+        }
+        .btn-login:hover { background-color: #facc15; }
+        .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
+
+        /* 📊 ส่วนแสดงผลหลักหลังผ่านประตูรหัสซ่อนไว้ตอนแรก */
+        .main-dashboard-content {
+            display: none; flex: 1; flex-direction: column; width: 100%; height: 100%;
+        }
 
         .top-total-banner {
             width: 100%; background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
@@ -81,20 +113,32 @@
 </head>
 <body>
 
-    <div class="top-total-banner">
-        <div class="banner-label">👤 ยอดนักท่องเที่ยวรวมทุกจุดสแกนสะสมทั่วพื้นที่</div>
-        <div class="banner-value" id="global-total-text">0</div>
+    <div id="login-overlay">
+        <div class="login-box">
+            <h3>🏛️ ศาลาลากลางส่วนกลาง</h3>
+            <p>ระบบรักษาความปลอดภัย Dashboard แผนที่นับคน</p>
+            <input type="password" id="pass-field" class="password-input" placeholder="•••••••••" onkeydown="if(event.key === 'Enter') checkSystemPassword()">
+            <button class="btn-login" onclick="checkSystemPassword()">🚀 ยืนยันรหัสผ่าน</button>
+            <div id="error-text" class="error-msg">❌ รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง!</div>
+        </div>
     </div>
 
-    <div class="workspace-grid">
-        <div class="map-wrapper">
-            <div id="map"></div>
+    <div id="dashboard-main-content" class="main-dashboard-content">
+        <div class="top-total-banner">
+            <div class="banner-label">👤 ยอดนักท่องเที่ยวรวมทุกจุดสแกนสะสมทั่วพื้นที่</div>
+            <div class="banner-value" id="global-total-text">0</div>
         </div>
 
-        <div class="sidebar-list-panel">
-            <div class="panel-heading">📊 สถิติจำแนกและจัดการจุดติดตั้งกล้อง</div>
-            <div id="node-rows-container">
-                </div>
+        <div class="workspace-grid">
+            <div class="map-wrapper">
+                <div id="map"></div>
+            </div>
+
+            <div class="sidebar-list-panel">
+                <div class="panel-heading">📊 สถิติจำแนกและจัดการจุดติดตั้งกล้อง</div>
+                <div id="node-rows-container">
+                    </div>
+            </div>
         </div>
     </div>
 
@@ -116,12 +160,91 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        let map = L.map('map').setView([11.8039, 99.7961], 13);
-        
-        // 🔄 คลังเก็บหมุดในรูป Object Key-Value เพื่อล็อกและอัปเดตรายตัว ไม่ให้เขียนทับกันมั่ว
+        let map = null;
         let activeMarkersMap = {}; 
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // 🔑 ฟังก์ชันตรวจสอบรหัสผ่านแมตช์ 987654321
+        window.checkSystemPassword = function() {
+            const inputPass = document.getElementById('pass-field').value;
+            if (inputPass === "987654321") {
+                // ซ่อนหน้าล็อกอิน และเปิดหน้า Dashboard ขึ้นมาทำงาน
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('dashboard-main-content').style.display = 'flex';
+                
+                // เริ่มรันระบบแผนที่และเชื่อม Firebase หลังจากผ่านรหัสแล้วเท่านั้น
+                startDashboardEngine();
+            } else {
+                document.getElementById('error-text').style.display = 'block';
+                document.getElementById('pass-field').value = "";
+                document.getElementById('pass-field').focus();
+            }
+        };
+
+        function startDashboardEngine() {
+            // สร้างแผนที่ Leaflet 
+            map = L.map('map').setView([11.8039, 99.7961], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            // ดักฟังเหตุการณ์การเปลี่ยนแปลงข้อมูล Firebase แบบ Realtime
+            const nodesRef = ref(database, 'nodes');
+            onValue(nodesRef, (snapshot) => {
+                const rowsContainer = document.getElementById('node-rows-container');
+                rowsContainer.innerHTML = ""; 
+
+                let globalGrandTotal = 0;
+                let incomingNodeKeys = [];
+
+                snapshot.forEach((childSnapshot) => {
+                    const nodeKey = childSnapshot.key;
+                    const nodeData = childSnapshot.val();
+
+                    if (nodeData && nodeData.latitude) {
+                        incomingNodeKeys.push(nodeKey);
+                        const currentCount = nodeData.people_count || 0;
+                        const displayName = nodeData.location_name ? nodeData.location_name : `จุดสแกนสำรอง (${nodeKey})`;
+                        
+                        globalGrandTotal += currentCount;
+
+                        const rowHtml = document.createElement('div');
+                        rowHtml.className = "node-row-item";
+                        rowHtml.innerHTML = `
+                            <div class="node-meta-box">
+                                <div>
+                                    <div class="node-name">📍 ${displayName}</div>
+                                    <span class="node-id-sub">ID: ${nodeKey.toUpperCase()}</span>
+                                </div>
+                                <div class="node-count-badge">${currentCount.toLocaleString()} คน</div>
+                            </div>
+                            <div class="node-action-bar">
+                                <button class="action-mini-btn btn-edit-node" onclick="editNodeLocationName('${nodeKey}', '${displayName.replace(/'/g, "\\'")}')">📝 แก้ไขชื่อ</button>
+                                <button class="action-mini-btn btn-delete-node" onclick="deleteNodeFromSystem('${nodeKey}', '${displayName.replace(/'/g, "\\'")}')">🗑️ ลบพิกัด</button>
+                            </div>
+                        `;
+                        rowsContainer.appendChild(rowHtml);
+
+                        if (activeMarkersMap[nodeKey]) {
+                            activeMarkersMap[nodeKey].setLatLng([nodeData.latitude, nodeData.longitude]);
+                            activeMarkersMap[nodeKey].setTooltipContent(`📍 ${displayName}: ${currentCount} คน`);
+                        } else {
+                            let newMarker = L.marker([nodeData.latitude, nodeData.longitude]).addTo(map);
+                            newMarker.bindTooltip(`📍 ${displayName}: ${currentCount} คน`, {
+                                permanent: true, direction: 'top', className: 'custom-map-label'
+                            });
+                            activeMarkersMap[nodeKey] = newMarker;
+                        }
+                    }
+                });
+
+                Object.keys(activeMarkersMap).forEach(key => {
+                    if(!incomingNodeKeys.includes(key)) {
+                        map.removeLayer(activeMarkersMap[key]);
+                        delete activeMarkersMap[key];
+                    }
+                });
+
+                document.getElementById('global-total-text').innerText = globalGrandTotal.toLocaleString();
+            });
+        }
 
         window.editNodeLocationName = function(nodeId, currentName) {
             const newName = prompt(`✍️ แก้ไขชื่อสถานที่สำหรับจุดติดตั้งนี้:`, currentName);
@@ -133,7 +256,6 @@
 
         window.deleteNodeFromSystem = function(nodeId, displayName) {
             if (confirm(`⚠️ ต้องการลบจุดติดตั้ง "${displayName}" ใช่หรือไม่?`)) {
-                // ลบหมุดออกจากแผนที่ก่อนทำลาย Node
                 if(activeMarkersMap[nodeId]) {
                     map.removeLayer(activeMarkersMap[nodeId]);
                     delete activeMarkersMap[nodeId];
@@ -141,71 +263,6 @@
                 remove(ref(database, `nodes/${nodeId}`)).catch(err => alert("Error: " + err.message));
             }
         };
-
-        const nodesRef = ref(database, 'nodes');
-        onValue(nodesRef, (snapshot) => {
-            const rowsContainer = document.getElementById('node-rows-container');
-            rowsContainer.innerHTML = ""; // ล้างหน้าจอ UI ลิสต์ฝั่งขวา เพื่อวาดแถวข้อมูลใหม่แบบ Realtime
-
-            let globalGrandTotal = 0;
-            let incomingNodeKeys = [];
-
-            snapshot.forEach((childSnapshot) => {
-                const nodeKey = childSnapshot.key;
-                const nodeData = childSnapshot.val();
-
-                if (nodeData && nodeData.latitude) {
-                    incomingNodeKeys.push(nodeKey);
-                    const currentCount = nodeData.people_count || 0;
-                    const displayName = nodeData.location_name ? nodeData.location_name : `จุดสแกนสำรอง (${nodeKey})`;
-                    
-                    globalGrandTotal += currentCount;
-
-                    // 1. วาดการ์ดข้อมูลแถวฝั่งขวา (ทำงานครบทุก Node)
-                    const rowHtml = document.createElement('div');
-                    rowHtml.className = "node-row-item";
-                    rowHtml.innerHTML = `
-                        <div class="node-meta-box">
-                            <div>
-                                <div class="node-name">📍 ${displayName}</div>
-                                <span class="node-id-sub">ID: ${nodeKey.toUpperCase()}</span>
-                            </div>
-                            <div class="node-count-badge">${currentCount.toLocaleString()} คน</div>
-                        </div>
-                        <div class="node-action-bar">
-                            <button class="action-mini-btn btn-edit-node" onclick="editNodeLocationName('${nodeKey}', '${displayName.replace(/'/g, "\\'")}')">📝 แก้ไขชื่อ</button>
-                            <button class="action-mini-btn btn-delete-node" onclick="deleteNodeFromSystem('${nodeKey}', '${displayName.replace(/'/g, "\\'")}')">🗑️ ลบพิกัด</button>
-                        </div>
-                    `;
-                    rowsContainer.appendChild(rowHtml);
-
-                    // 2. 🗺️ ปรับปรุงระบบปักหมุดบนแผนที่: ตรวจสอบและอัปเดตตำแหน่งเป็นราย Node ID ไม่เหมารวมลบทิ้งทั้งหมด
-                    if (activeMarkersMap[nodeKey]) {
-                        // ถ้าเคยมีหมุดของเครื่องนี้อยู่แล้ว ให้ปรับตำแหน่ง Lat/Lng และเปลี่ยนข้อความ Tooltip ล่าสุด
-                        activeMarkersMap[nodeKey].setLatLng([nodeData.latitude, nodeData.longitude]);
-                        activeMarkersMap[nodeKey].setTooltipContent(`📍 ${displayName}: ${currentCount} คน`);
-                    } else {
-                        // ถ้าเป็นกล้องเครื่องใหม่แกะกล่องที่เพิ่งต่อเข้ามา ให้สร้างหมุดใหม่ผูกเข้ากับ ID เครื่องนั้น
-                        let newMarker = L.marker([nodeData.latitude, nodeData.longitude]).addTo(map);
-                        newMarker.bindTooltip(`📍 ${displayName}: ${currentCount} คน`, {
-                            permanent: true, direction: 'top', className: 'custom-map-label'
-                        });
-                        activeMarkersMap[nodeKey] = newMarker;
-                    }
-                }
-            });
-
-            // 3. เคลียร์หมุดที่ถูกลบออกจากฐานข้อมูลไปแล้ว (ถ้ามี)
-            Object.keys(activeMarkersMap).forEach(key => {
-                if(!incomingNodeKeys.includes(key)) {
-                    map.removeLayer(activeMarkersMap[key]);
-                    delete activeMarkersMap[key];
-                }
-            });
-
-            // 4. แสดงผลยอดสะสมรวมของทุกกล้องพร้อมๆ กัน
-            document.getElementById('global-total-text').innerText = globalGrandTotal.toLocaleString();
-        });
     </script>
 </body>
 </html>
