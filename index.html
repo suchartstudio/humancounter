@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบ AI นับคน - เทศบาลเมืองประจวบคีรีขันธ์</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <style>
+        :root {
+            --bg-main: #0c0a09;
+            --panel-bg: #1c1917;
+            --gold: #eab308;
+            --gold-light: #fef08a;
+            --text-light: #f5f5f4;
+            --text-muted: #a8a29e;
+            --border-color: #292524;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html {
+            width: 100%; height: 100%;
+            background-color: var(--bg-main);
+            color: var(--text-light);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 🏛️ แถบหัวข้อด้านบน (Top Header) */
+        .top-header {
+            width: 100%;
+            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            border-bottom: 3px solid var(--gold);
+            padding: 18px 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        .top-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gold-light);
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+        }
+        .top-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 🍱 พื้นที่เนื้อหาหลักแบบแบ่งครึ่งหน้าจอ 16:9 */
+        .main-workspace {
+            flex: 1;
+            display: flex;
+            width: 100%;
+            height: calc(100% - 85px);
+        }
+
+        /* 📹 ฝั่งซ้าย: หน้าจอแสดงผลวิดีโอกล้อง USB */
+        .video-side {
+            flex: 1.3;
+            background-color: #000;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+        }
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 1024px;
+            aspect-ratio: 16 / 9;
+            background: #141414;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border: 1px solid #3f3f46;
+        }
+        #webcam {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+        }
+        #ai-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;
+        }
+
+        /* 📊 ฝั่งขวา: แผงหน้าปัดแสดงตัวเลขการนับคน */
+        .panel-side {
+            flex: 0.7;
+            background-color: var(--panel-bg);
+            padding: 40px 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-left: 4px solid var(--gold);
+            padding-left: 10px;
+            margin-bottom: 25px;
+        }
+
+        .counter-card {
+            background: linear-gradient(145deg, #262220, #171413);
+            border: 1px solid #44403c;
+            border-radius: 20px;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.05), 0 8px 16px rgba(0,0,0,0.4);
+            margin-bottom: 30px;
+        }
+        .counter-label {
+            font-size: 18px;
+            color: var(--text-light);
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+        .counter-value {
+            font-size: 96px;
+            font-weight: 800;
+            color: var(--gold);
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
+        }
+
+        .system-status-box {
+            background: #141414;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dot {
+            width: 10px; height: 10px;
+            background-color: #a8a29e;
+            border-radius: 50%;
+        }
+        .dot.active {
+            background-color: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+        .btn-reset {
+            background: #292524;
+            color: var(--text-light);
+            border: 1px solid #44403c;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-reset:hover {
+            background: var(--gold);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-header">
+        <h1>ระบบ AI นับคน โดย กองการท่องเที่ยวและกีฬา เทศบาลเมืองประจวบคีรีขันธ์</h1>
+        <p>Real-time Tourist Passenger Tracking & Analysis Terminal</p>
+    </div>
+
+    <div class="main-workspace">
+        <div class="video-side">
+            <div class="video-wrapper">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="ai-overlay"></canvas>
+            </div>
+        </div>
+
+        <div class="panel-side">
+            <div>
+                <div class="panel-title">LIVE STATISTICS PANEL</div>
+                <div class="counter-card">
+                    <div class="counter-label">👤 จำนวนนักท่องเที่ยวสะสมในปัจจุบัน</div>
+                    <div class="counter-value" id="total-people-count">0</div>
+                </div>
+            </div>
+
+            <div class="system-status-box">
+                <div class="status-indicator">
+                    <div class="dot" id="status-dot"></div>
+                    <span id="status-text">กำลังโหลดโมเดลปัญญาประดิษฐ์...</span>
+                </div>
+                <button class="btn-reset" id="btn-reset-counter">ล้างค่าใหม่ (Reset)</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+        // คอนฟิกใหม่ที่คุณระบุ
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvXRATBf2x1Lq_JToL2rlQYOh8mK65tIU",
+            authDomain: "suchartstudio-9a78d.firebaseapp.com",
+            databaseURL: "https://suchartstudio-9a78d-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "suchartstudio-9a78d",
+            storageBucket: "suchartstudio-9a78d.firebasestorage.app",
+            messagingSenderId: "953369646185",
+            appId: "1:953369646185:web:9d20ca75d4bb73626ebef8",
+            measurementId: "G-81D391W1GR"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const database = getDatabase(app);
+
+        let model = null;
+        let cumulativePeopleCount = 0;
+        let trackedPeople = [];
+        let nextObjectId = 0;
+
+        const DISTANCE_THRESHOLD = 85; 
+        const TRACK_MAX_AGE = 1500; 
+
+        async function initLaptopCounter() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720 }, 
+                    audio: false
+                });
+                
+                document.getElementById('webcam').srcObject = stream;
+                model = await cocoSsd.load();
+                
+                document.getElementById('status-dot').className = "dot active";
+                document.getElementById('status-text').innerText = "ระบบ AI ทำงานปกติ (กล้อง USB)";
+                
+                runPredictionEngine();
+            } catch (err) {
+                document.getElementById('status-text').innerText = "ข้อผิดพลาด: ไม่พบตัวกล้อง USB";
+                alert("กรุณาเชื่อมต่อกล้องเว็บแคมผ่านพอร์ต USB และอนุญาตให้เข้าถึงสิทธิ์กล้อง");
+            }
+        }
+
+        // ฟังก์ชันอัปเดตยอดสะสมขึ้น Realtime Database
+        function uploadDataToFirebase(count) {
+            set(ref(database, 'tourist_counter/live_status'), {
+                current_total: count,
+                timestamp: Date.now()
+            }).catch(err => console.error("Firebase Sync Error: ", err));
+        }
+
+        // ผูกปุ่ม Reset ให้อยู่ในขอบเขตโมดูลสคริปต์
+        document.getElementById('btn-reset-counter').addEventListener('click', () => {
+            if(confirm("คุณต้องการล้างยอดการนับคนสะสมเป็น 0 ใช่หรือไม่?")) {
+                cumulativePeopleCount = 0;
+                trackedPeople = [];
+                document.getElementById('total-people-count').innerText = "0";
+                uploadDataToFirebase(0);
+            }
+        });
+
+        async function runPredictionEngine() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('ai-overlay');
+            const ctx = canvas.getContext('2d');
+
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                const predictions = await model.detect(video);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                let currentFrameDetections = [];
+
+                predictions.forEach(p => {
+                    if (p.class === 'person' && p.score > 0.50) {
+                        const [x, y, w, h] = p.bbox;
+                        currentFrameDetections.push({ cx: x + w / 2, cy: y + h / 2 });
+
+                        ctx.strokeStyle = "#eab308";
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(x, y, w, h);
+
+                        ctx.fillStyle = "#eab308";
+                        ctx.font = "bold 16px sans-serif";
+                        ctx.fillText(`TOURIST (${Math.round(p.score * 100)}%)`, x, y > 20 ? y - 8 : y + 20);
+                    }
+                });
+
+                let now = Date.now();
+                currentFrameDetections.forEach(det => {
+                    let matchedTrack = null;
+                    let bestDist = DISTANCE_THRESHOLD;
+
+                    trackedPeople.forEach(track => {
+                        let dist = Math.hypot(det.cx - track.cx, det.cy - track.cy);
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            matchedTrack = track;
+                        }
+                    });
+
+                    if (matchedTrack) {
+                        matchedTrack.cx = det.cx;
+                        matchedTrack.cy = det.cy;
+                        matchedTrack.lastSeen = now;
+                    } else {
+                        cumulativePeopleCount++;
+                        document.getElementById('total-people-count').innerText = cumulativePeopleCount;
+                        
+                        // อัปเดตข้อมูลขึ้น Firebase แบบเรียลไทม์เมื่อมีคนเพิ่มขึ้น
+                        uploadDataToFirebase(cumulativePeopleCount);
+
+                        trackedPeople.push({
+                            id: nextObjectId++,
+                            cx: det.cx,
+                            cy: det.cy,
+                            lastSeen: now
+                        });
+                    }
+                });
+
+                trackedPeople = trackedPeople.filter(t => (now - t.lastSeen) < TRACK_MAX_AGE);
+            }
+            requestAnimationFrame(runPredictionEngine);
+        }
+
+        // เริ่มรันระบบหลังจากหน้าเว็บพร้อมใช้งาน
+        initLaptopCounter();
+    </script>
+</body>
+</html>
