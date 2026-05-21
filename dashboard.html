@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tourist Master Dashboard - แสดงผลตามชื่อพิกัดสถานที่</title>
+    <title>Tourist Master Dashboard - ระบบจัดการจุดติดตั้ง</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +21,8 @@
             --text-light: #f5f5f4;
             --text-muted: #a8a29e;
             --border-color: #292524;
+            --danger: #ef4444;
+            --info: #3b82f6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,14 +44,26 @@
         .sidebar-list-panel { flex: 0.8; background-color: var(--panel-bg); border-left: 1px solid var(--border-color); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
         .panel-heading { font-size: 15px; color: var(--gold-light); font-weight: 600; margin-bottom: 15px; text-transform: uppercase; border-left: 4px solid var(--gold); padding-left: 8px; }
 
+        /* การจัดบล็อกรายการข้อมูลแถวใหม่ */
         .node-row-item {
-            background: #141414; border: 1px solid var(--border-color); border-radius: 10px;
-            padding: 12px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-            border-left: 3px solid var(--gold);
+            background: #141414; border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;
+            border-left: 4px solid var(--gold);
         }
-        .node-name { font-weight: 600; font-size: 14px; color: var(--text-light); }
+        .node-meta-box { display: flex; justify-content: space-between; align-items: flex-start; }
+        .node-name { font-weight: 600; font-size: 15px; color: var(--text-light); }
         .node-id-sub { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; font-family: monospace; }
         .node-count-badge { background: rgba(234, 179, 8, 0.15); border: 1px solid var(--gold); color: var(--gold); padding: 4px 12px; border-radius: 8px; font-weight: 700; font-family: monospace; font-size: 15px; }
+        
+        /* 🛠️ ส่วนป้ายปุ่มกดจัดการข้อมูล (Action Bar) */
+        .node-action-bar { display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #262220; padding-top: 8px; }
+        .action-mini-btn {
+            padding: 5px 10px; font-size: 12px; font-family: 'Chakra Petch', sans-serif; font-weight: 600;
+            border: none; border-radius: 6px; cursor: pointer; color: white; transition: opacity 0.2s;
+        }
+        .action-mini-btn:hover { opacity: 0.8; }
+        .btn-edit-node { background-color: var(--info); }
+        .btn-delete-node { background-color: var(--danger); }
 
         .custom-map-label {
             background: rgba(234, 179, 8, 0.95) !important; border: 1px solid #fff !important; 
@@ -80,7 +94,7 @@
         </div>
 
         <div class="sidebar-list-panel">
-            <div class="panel-heading">📊 สถิติจำแนกตามจุดชื่อเรียกสถานที่จริง</div>
+            <div class="panel-heading">📊 สถิติจำแนกและจัดการจุดติดตั้งกล้อง</div>
             <div id="node-rows-container">
                 </div>
         </div>
@@ -88,7 +102,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBvXRATBf2x1Lq_JToL2rlQYOh8mK65tIU",
@@ -109,6 +123,28 @@
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+        // 📝 ฟังก์ชันสำหรับกดแก้ไขชื่อสถานที่จากหน้าแดชบอร์ด
+        window.editNodeLocationName = function(nodeId, currentName) {
+            const newName = prompt(`✍️ แก้ไขชื่อสถานที่สำหรับจุดติดตั้งนี้:`, currentName);
+            if (newName !== null && newName.trim() !== "") {
+                const nodeUpdateRef = ref(database, `nodes/${nodeId}`);
+                update(nodeUpdateRef, {
+                    location_name: newName.trim()
+                }).then(() => alert("อัปเดตชื่อสถานที่เรียบร้อย!"))
+                  .catch(err => alert("เกิดข้อผิดพลาด: " + err.message));
+            }
+        };
+
+        // ❌ ฟังก์ชันสำหรับลบจุดติดตั้งกล้องออกจากระบบ
+        window.deleteNodeFromSystem = function(nodeId, displayName) {
+            if (confirm(`⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบจุดติดตั้ง "${displayName}" ออกจากฐานข้อมูลส่วนกลาง?`)) {
+                const nodeDeleteRef = ref(database, `nodes/${nodeId}`);
+                remove(nodeDeleteRef)
+                .then(() => alert("ลบข้อมูลจุดติดตั้งนี้เรียบร้อยแล้ว"))
+                .catch(err => alert("ไม่สามารถลบได้เนื่องจาก: " + err.message));
+            }
+        };
+
         const nodesRef = ref(database, 'nodes');
         onValue(nodesRef, (snapshot) => {
             mapMarkersLayers.forEach(layer => map.removeLayer(layer));
@@ -125,24 +161,29 @@
 
                 if (nodeData && nodeData.latitude) {
                     const currentCount = nodeData.people_count || 0;
-                    // ดึงค่าชื่อสถานที่ติดตั้งมาแสดงผล หากยังไม่ได้ระบุจะดึงชื่อ Node ID สำรองมาแสดงผลแทน
                     const displayName = nodeData.location_name ? nodeData.location_name : `จุดสแกนสำรอง (${nodeKey})`;
                     
                     globalGrandTotal += currentCount;
 
-                    // 1. นำชื่อที่เจ้าหน้าที่กรอกไปขึ้นแถวลิสต์รายการฝั่งขวา
+                    // 1. สร้างโครงสร้าง HTML การ์ดข้อมูลพร้อมระบบปุ่มแก้ไขและลบข้อมูล
                     const rowHtml = document.createElement('div');
                     rowHtml.className = "node-row-item";
                     rowHtml.innerHTML = `
-                        <div>
-                            <div class="node-name">📍 ${displayName}</div>
-                            <span class="node-id-sub">ID: ${nodeKey.toUpperCase()}</span>
+                        <div class="node-meta-box">
+                            <div>
+                                <div class="node-name">📍 ${displayName}</div>
+                                <span class="node-id-sub">ID: ${nodeKey.toUpperCase()}</span>
+                            </div>
+                            <div class="node-count-badge">${currentCount.toLocaleString()} คน</div>
                         </div>
-                        <div class="node-count-badge">${currentCount.toLocaleString()} คน</div>
+                        <div class="node-action-bar">
+                            <button class="action-mini-btn btn-edit-node" onclick="editNodeLocationName('${nodeKey}', '${displayName.replace(/'/g, "\\'")}')">📝 แก้ไขชื่อ</button>
+                            <button class="action-mini-btn btn-delete-node" onclick="deleteNodeFromSystem('${nodeKey}', '${displayName.replace(/'/g, "\\'")}')">🗑️ ลบพิกัด</button>
+                        </div>
                     `;
                     rowsContainer.appendChild(rowHtml);
 
-                    // 2. นำชื่อสถานที่ติดป้ายสลักเหนือหัวหมุดบนแผนที่ฝั่งซ้าย
+                    // 2. ปักหมุดลงบนแผนที่ปกติ
                     let marker = L.marker([nodeData.latitude, nodeData.longitude]).addTo(map);
                     marker.bindTooltip(`📍 ${displayName}: ${currentCount} คน`, {
                         permanent: true, direction: 'top', className: 'custom-map-label'
