@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tourist Master Dashboard - ระบบลงชื่อเข้าใช้งาน</title>
+    <title>Tourist Master Dashboard - ระบบสรุปผลส่วนกลาง</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +28,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; background-color: var(--bg-main); color: var(--text-light); font-family: 'Chakra Petch', sans-serif; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* 🔒 หน้าต่างบังคับกรอกรหัสผ่าน (Login Layer) */
+        /* 🔒 โครงสร้างกล่องล็อกอินพร้อมโลโก้ */
         #login-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--bg-main); z-index: 9999;
@@ -38,6 +38,9 @@
             background-color: var(--panel-bg); border: 1px solid var(--border-color);
             border-radius: 16px; padding: 30px; width: 100%; max-width: 400px;
             text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        .login-logo {
+            height: 60px; width: auto; object-fit: contain; margin-bottom: 15px;
         }
         .login-box h3 { color: var(--gold-light); margin-bottom: 8px; font-size: 20px; }
         .login-box p { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
@@ -55,20 +58,23 @@
         .btn-login:hover { background-color: #facc15; }
         .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
 
-        /* 📊 ส่วนแสดงผลหลักหลังผ่านประตูรหัสซ่อนไว้ตอนแรก */
         .main-dashboard-content {
             display: none; flex: 1; flex-direction: column; width: 100%; height: 100%;
         }
 
+        /* 🖼️ แบนเนอร์ด้านบนของ Dashboard ที่จัดกลุ่มชื่อคู่โลโก้ */
         .top-total-banner {
             width: 100%; background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-            border-bottom: 2px solid var(--gold); padding: 20px; text-align: center;
+            border-bottom: 2px solid var(--gold); padding: 15px 20px;
+            display: flex; align-items: center; justify-content: space-between;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .banner-label { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); }
-        .banner-value { font-size: 54px; font-weight: 700; color: var(--gold); text-shadow: 0 0 20px rgba(234,179,8,0.4); line-height: 1.1; }
+        .banner-identity { display: flex; align-items: center; gap: 15px; }
+        .banner-logo { height: 45px; width: auto; object-fit: contain; }
+        .banner-label { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); text-align: left; }
+        .banner-value { font-size: 44px; font-weight: 700; color: var(--gold); text-shadow: 0 0 20px rgba(234,179,8,0.4); line-height: 1; }
 
-        .workspace-grid { flex: 1; display: flex; width: 100%; height: calc(100% - 110px); }
+        .workspace-grid { flex: 1; display: flex; width: 100%; height: calc(100% - 77px); }
 
         .map-wrapper { flex: 1.2; height: 100%; position: relative; }
         #map { width: 100%; height: 100%; }
@@ -104,10 +110,12 @@
 
         @media (max-width: 768px) {
             body, html { overflow: auto; }
+            .top-total-banner { flex-direction: column; gap: 10px; height: auto; text-align: center; }
+            .banner-label { text-align: center; }
             .workspace-grid { flex-direction: column; height: auto; }
             .map-wrapper { width: 100%; height: 50vh; }
             .sidebar-list-panel { width: 100%; border-left: none; border-top: 1px solid var(--border-color); }
-            .banner-value { font-size: 40px; }
+            .banner-value { font-size: 36px; }
         }
     </style>
 </head>
@@ -115,7 +123,8 @@
 
     <div id="login-overlay">
         <div class="login-box">
-            <h3>DASHBOARD MISSION CONTROL</h3>
+            <img src="Logo.png" alt="Logo" class="login-logo">
+            <h3>🏛️ ศูนย์ควบคุมส่วนกลาง</h3>
             <p>ระบบรักษาความปลอดภัย Dashboard แผนที่นับคน</p>
             <input type="password" id="pass-field" class="password-input" placeholder="•••••••••" onkeydown="if(event.key === 'Enter') checkSystemPassword()">
             <button class="btn-login" onclick="checkSystemPassword()">🚀 ยืนยันรหัสผ่าน</button>
@@ -125,8 +134,17 @@
 
     <div id="dashboard-main-content" class="main-dashboard-content">
         <div class="top-total-banner">
-            <div class="banner-label">👤 ยอดนักท่องเที่ยวรวมทุกจุดสแกนสะสมทั่วพื้นที่</div>
-            <div class="banner-value" id="global-total-text">0</div>
+            <div class="banner-identity">
+                <img src="Logo.png" alt="Logo" class="banner-logo">
+                <div>
+                    <div class="banner-label">📊 ระบบสรุปผลสารสนเทศภูมิศาสตร์</div>
+                    <span style="font-size: 11px; color: var(--gold-light);">เทศบาลเมืองประจวบคีรีขันธ์</span>
+                </div>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 2px;">👤 ยอดสะสมรวมทุกจุดตรวจ</span>
+                <div class="banner-value" id="global-total-text">0</div>
+            </div>
         </div>
 
         <div class="workspace-grid">
@@ -163,15 +181,11 @@
         let map = null;
         let activeMarkersMap = {}; 
 
-        // 🔑 ฟังก์ชันตรวจสอบรหัสผ่านแมตช์ 987654321
         window.checkSystemPassword = function() {
             const inputPass = document.getElementById('pass-field').value;
             if (inputPass === "987654321") {
-                // ซ่อนหน้าล็อกอิน และเปิดหน้า Dashboard ขึ้นมาทำงาน
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('dashboard-main-content').style.display = 'flex';
-                
-                // เริ่มรันระบบแผนที่และเชื่อม Firebase หลังจากผ่านรหัสแล้วเท่านั้น
                 startDashboardEngine();
             } else {
                 document.getElementById('error-text').style.display = 'block';
@@ -181,11 +195,9 @@
         };
 
         function startDashboardEngine() {
-            // สร้างแผนที่ Leaflet 
             map = L.map('map').setView([11.8039, 99.7961], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-            // ดักฟังเหตุการณ์การเปลี่ยนแปลงข้อมูล Firebase แบบ Realtime
             const nodesRef = ref(database, 'nodes');
             onValue(nodesRef, (snapshot) => {
                 const rowsContainer = document.getElementById('node-rows-container');
