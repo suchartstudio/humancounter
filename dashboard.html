@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tourist Dashboard - กองการท่องเที่ยวและกีฬา</title>
+    <title>Tourist Master Dashboard - ป้ายรวมยอดแยกสาขา</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -20,165 +24,74 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; background-color: var(--bg-main); color: var(--text-light); font-family: 'Chakra Petch', sans-serif; overflow: hidden; display: flex; flex-direction: column; }
 
-        body, html {
-            width: 100%; height: 100%;
-            background-color: var(--bg-main);
-            color: var(--text-light);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
+        /* ป้ายยอดสะสมรวมด้านบนสุด */
+        .top-total-banner {
+            width: 100%; background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            border-bottom: 2px solid var(--gold); padding: 20px; text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+        .banner-label { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); }
+        .banner-value { font-size: 54px; font-weight: 700; color: var(--gold); text-shadow: 0 0 20px rgba(234,179,8,0.4); line-height: 1.1; }
 
-        /* 💻 Layout สำหรับหน้าจอคอมพิวเตอร์ (แสดงผลซ้าย-ขวา) */
-        .dashboard-container {
-            display: flex;
-            width: 100%;
-            height: 100%;
-        }
+        /* พื้นที่แบ่ง Layout */
+        .workspace-grid { flex: 1; display: flex; width: 100%; height: calc(100% - 110px); }
 
-        /* ส่วนที่ 1: แผนที่แสดงพิกัด */
-        .map-section {
-            flex: 1.3;
-            height: 100%;
-            position: relative;
-            background: #000;
-        }
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+        /* ส่วนแผนที่ฝั่งซ้าย */
+        .map-wrapper { flex: 1.2; height: 100%; position: relative; }
+        #map { width: 100%; height: 100%; }
 
-        /* ส่วนที่ 2: ป้ายตัวเลขสะสมรวม */
-        .summary-section {
-            flex: 0.7;
-            background-color: var(--panel-bg);
-            border-left: 1px solid var(--border-color);
-            padding: 40px 24px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+        /* ส่วนตารางแถวข้อมูลฝั่งขวา */
+        .sidebar-list-panel { flex: 0.8; background-color: var(--panel-bg); border-left: 1px solid var(--border-color); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
+        .panel-heading { font-size: 15px; color: var(--gold-light); font-weight: 600; margin-bottom: 15px; text-transform: uppercase; border-left: 4px solid var(--gold); padding-left: 8px; }
 
-        .brand-header {
-            text-align: center;
-            margin-bottom: 30px;
+        .node-row-item {
+            background: #141414; border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 12px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
         }
-        .brand-header h2 {
-            font-size: 20px;
-            color: var(--gold-light);
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-        .brand-header p {
-            font-size: 12px;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
+        .node-name { font-weight: 600; font-size: 14px; color: var(--text-light); }
+        .node-count-badge { background: rgba(234, 179, 8, 0.15); border: 1px solid var(--gold); color: var(--gold); padding: 4px 12px; border-radius: 8px; font-weight: 700; font-family: monospace; }
 
-        .counter-card {
-            background: linear-gradient(145deg, #262220, #171413);
-            border: 1px solid #44403c;
-            border-radius: 24px;
-            padding: 50px 20px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-        .counter-label {
-            font-size: 16px;
-            color: var(--text-light);
-            font-weight: 500;
-            margin-bottom: 15px;
-            letter-spacing: 0.5px;
-        }
-        .counter-value {
-            font-size: 84px;
-            font-weight: 800;
-            color: var(--gold);
-            font-family: 'Courier New', Courier, monospace;
-            line-height: 1;
-            text-shadow: 0 0 25px rgba(234, 179, 8, 0.35);
-        }
-        .update-time {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 20px;
-            display: block;
-        }
-
-        /* ตกแต่งป้ายตัวเลขบนแผนที่ (Label บ่งบอกจำนวนคนประจำจุด) */
         .custom-map-label {
-            background: rgba(234, 179, 8, 0.95) !important;
-            border: 1px solid #fff !important; 
-            color: #000 !important; 
-            font-weight: bold !important; 
-            font-size: 12px !important;
-            border-radius: 6px !important; 
-            padding: 3px 6px !important; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            white-space: nowrap;
+            background: rgba(234, 179, 8, 0.95) !important; border: 1px solid #fff !important; 
+            color: #000 !important; font-weight: bold !important; font-size: 11px !important;
+            border-radius: 5px !important; padding: 2px 5px !important; white-space: nowrap;
         }
 
-        /* 📱 Mobile Responsive: ปรับเปลี่ยน Layout เมื่อเปิดบนจอมือถือ */
+        /* Responsive สำหรับมือถือ */
         @media (max-width: 768px) {
             body, html { overflow: auto; }
-            .dashboard-container {
-                flex-direction: column; /* เปลี่ยนจากซ้าย-ขวา เป็น บน-ล่าง */
-                height: auto;
-                min-height: 100vh;
-            }
-            /* เอาป้ายตัวเลขรวมขึ้นไปไว้ด้านบนสุด */
-            .summary-section {
-                flex: none;
-                width: 100%;
-                padding: 20px 16px;
-                border-left: none;
-                border-bottom: 1px solid var(--border-color);
-                order: 1; /* ล็อกให้อยู่ส่วนบน */
-            }
-            .counter-card {
-                padding: 25px 15px;
-            }
-            .counter-value {
-                font-size: 56px;
-            }
-            /* เอาแผนที่ลงมาไว้ด้านล่าง */
-            .map-section {
-                flex: none;
-                width: 100%;
-                height: 60vh; /* ให้พื้นที่แผนที่แสดงผล 60% ของความสูงหน้าจอมือถือ */
-                order: 2;
-            }
+            .workspace-grid { flex-direction: column; height: auto; }
+            .map-wrapper { width: 100%; height: 50vh; }
+            .sidebar-list-panel { width: 100%; border-left: none; border-top: 1px solid var(--border-color); }
+            .banner-value { font-size: 40px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="dashboard-container">
-        
-        <div class="map-section">
+    <div class="top-total-banner">
+        <div class="banner-label">👤 ยอดนักท่องเที่ยวรวมทุกจุดสแกนสะสมทั่วพื้นที่</div>
+        <div class="banner-value" id="global-total-text">0</div>
+    </div>
+
+    <div class="workspace-grid">
+        <div class="map-wrapper">
             <div id="map"></div>
         </div>
 
-        <div class="summary-section">
-            <div class="brand-header">
-                <h2>เทศบาลเมืองประจวบคีรีขันธ์</h2>
-                <p>กองการท่องเที่ยวและกีฬา • DASHBOARD</p>
-            </div>
-            
-            <div class="counter-card">
-                <div class="counter-label">👤 ยอดนักท่องเที่ยวสะสมรวมทั้งหมด</div>
-                <div class="counter-value" id="total-accumulated-text">0</div>
-                <small class="update-time" id="sync-time-text">รอการเชื่อมต่อข้อมูล...</small>
-            </div>
+        <div class="sidebar-list-panel">
+            <div class="panel-heading">📊 สถิติระบุจำแนกแยกตามจุดกล้อง</div>
+            <div id="node-rows-container">
+                </div>
         </div>
-
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
-        // คอนฟิกใหม่ของโครงการ suchartstudio-9a78d
         const firebaseConfig = {
             apiKey: "AIzaSyBvXRATBf2x1Lq_JToL2rlQYOh8mK65tIU",
             authDomain: "suchartstudio-9a78d.firebaseapp.com",
@@ -190,65 +103,56 @@
             measurementId: "G-81D391W1GR"
         };
 
-        // Initialize Firebase v12
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // ตั้งจุดศูนย์กลางเริ่มต้นของแผนที่ (ล็อกพิกัดตัวเมืองประจวบคีรีขันธ์ [11.8039, 99.7961] หรือสามารถสลับเป็นขอนแก่นตามการใช้งานเดิมได้)
+        // จุดศูนย์กลางแผนที่อยู่ที่ ประจวบคีรีขันธ์
         let map = L.map('map').setView([11.8039, 99.7961], 13);
         let mapMarkersLayers = [];
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // 🔗 1. ดักจับยอดรวมนักท่องเที่ยวสะสมจาก Node 'tourist_counter/live_status' 
-        const liveStatusRef = ref(database, 'tourist_counter/live_status');
-        onValue(liveStatusRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById('total-accumulated-text').innerText = data.current_total.toLocaleString();
-                document.getElementById('sync-time-text').innerText = `อัปเดตล่าสุด: ${new Date(data.timestamp).toLocaleTimeString('th-TH')} น.`;
-            }
-        });
-
-        // 🔗 2. ดักจับข้อมูลพิกัดสถานที่เพื่อมาพล็อตลงบนแผนที่ (ใช้พิกัดปักหมุดปกติ ไม่มีย่นเรดาร์รบกวนสายตา)
-        const trafficSessionsRef = ref(database, 'traffic_sessions');
-        onValue(trafficSessionsRef, (snapshot) => {
-            // ล้างหมุดเดิมออกเพื่อเตรียมอัปเดตเฟรมถัดไป
+        // ดักจับและประมวลผลข้อมูลโครงสร้างคอมพิวเตอร์แต่ละจุด (Node)
+        const nodesRef = ref(database, 'nodes');
+        onValue(nodesRef, (snapshot) => {
+            // ล้างจุดมาร์กเกอร์เดิมบนแผนที่
             mapMarkersLayers.forEach(layer => map.removeLayer(layer));
             mapMarkersLayers = [];
 
+            // ล้างแถวข้อมูลด้านข้างตัวเดิมออก
+            const rowsContainer = document.getElementById('node-rows-container');
+            rowsContainer.innerHTML = "";
+
+            let globalGrandTotal = 0;
+
             snapshot.forEach((childSnapshot) => {
-                const data = childSnapshot.val();
-                if (data.latitude && data.longitude) {
-                    
-                    // ปักหมุดด้วย Marker มาตรฐานของแผนที่
-                    let marker = L.marker([data.latitude, data.longitude]).addTo(map);
+                const nodeKey = childSnapshot.key;
+                const nodeData = childSnapshot.val();
 
-                    // แปะข้อความบอกจำนวนคนเหนือหัวหมุด
-                    let peopleCount = data.counts && data.counts.person ? data.counts.person : (data.total_vehicles_1min || 0);
-                    marker.bindTooltip(`👤 ${peopleCount} คน`, {
-                        permanent: true,
-                        direction: 'top',
-                        offset: [0, -10],
-                        className: 'custom-map-label'
-                    });
+                if (nodeData && nodeData.latitude) {
+                    const currentCount = nodeData.people_count || 0;
+                    globalGrandTotal += currentCount;
 
-                    // ใส่รายละเอียด Pop-up เผื่อเวลากดจิ้มที่หมุดบนหน้าจอมือถือ
-                    let popupContent = `
-                        <div style="font-family:sans-serif; color:#111; font-size:12px; min-width:150px;">
-                            <b style="color:#eab308; font-size:13px; display:block; margin-bottom:4px;">📍 จุดตรวจวัดท่องเที่ยว</b>
-                            <hr style="border:0; border-top:1px solid #ddd; margin:4px 0;">
-                            <b>จำนวนกลุ่มคนในพื้นที่:</b> ${peopleCount} คน<br>
-                            <small style="color:gray; display:block; margin-top:4px;">ข้อมูล ณ: ${new Date(data.timestamp).toLocaleTimeString('th-TH')} น.</small>
-                        </div>
+                    // 1. สร้างแถวข้อมูลสรุปฝั่งขวา (Row Item UX)
+                    const rowHtml = document.createElement('div');
+                    rowHtml.className = "node-row-item";
+                    rowHtml.innerHTML = `
+                        <div class="node-name">🖥️ ${nodeKey.toUpperCase()}</div>
+                        <div class="node-count-badge">${currentCount.toLocaleString()} คน</div>
                     `;
-                    marker.bindPopup(popupContent);
+                    rowsContainer.appendChild(rowHtml);
 
+                    // 2. ปักหมุดลงบนแผนที่จุดที่คอมเครื่องนั้นตั้งอยู่
+                    let marker = L.marker([nodeData.latitude, nodeData.longitude]).addTo(map);
+                    marker.bindTooltip(`👤 ${nodeKey}: ${currentCount} คน`, {
+                        permanent: true, direction: 'top', className: 'custom-map-label'
+                    });
                     mapMarkersLayers.push(marker);
                 }
             });
+
+            // 3. ปรับค่าตัวเลขป้ายสะสมใหญ่ด้านบนสุดรวมจากทุก Node
+            document.getElementById('global-total-text').innerText = globalGrandTotal.toLocaleString();
         });
     </script>
 </body>
