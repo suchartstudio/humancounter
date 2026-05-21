@@ -32,21 +32,24 @@
             overflow: hidden; display: flex; flex-direction: column;
         }
 
+        /* 🖼️ ปรับปรุงสไตล์แถบด้านบนเพื่อรองรับโลโก้ */
         .top-header {
             width: 100%; background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-            border-bottom: 3px solid var(--gold); padding: 15px; text-align: center;
+            border-bottom: 3px solid var(--gold); padding: 12px 20px;
+            display: flex; align-items: center; justify-content: center; gap: 15px;
+        }
+        .header-logo {
+            height: 40px; width: auto; object-fit: contain;
         }
         .top-header h1 { font-size: 20px; color: #fef08a; font-weight: 700; }
 
-        .main-workspace { flex: 1; display: flex; width: 100%; height: calc(100% - 65px); }
+        .main-workspace { flex: 1; display: flex; width: 100%; height: calc(100% - 67px); }
 
-        /* ฝั่งซ้าย: กล้องวิดีโอ */
         .video-side { flex: 1.2; background-color: #000; position: relative; display: flex; justify-content: center; align-items: center; padding: 15px; }
         .video-wrapper { position: relative; width: 100%; height: 100%; max-width: 900px; aspect-ratio: 16 / 9; background: #141414; border-radius: 12px; overflow: hidden; border: 1px solid #3f3f46; }
         #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
         #ai-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; }
 
-        /* ฝั่งขวา: แผงควบคุมและแผนที่พิกัดกล้อง */
         .panel-side { flex: 0.8; background-color: var(--panel-bg); padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
         
         .counter-card { background: #141414; border: 1px solid #44403c; border-radius: 16px; padding: 15px; text-align: center; }
@@ -57,7 +60,6 @@
         .btn-start { background: #0a84ff; }
         .btn-active { background: #ff453a; }
 
-        /* ส่วนกล่องข้อมูลสถานที่และแผนที่ */
         .form-group { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; }
         .form-group label { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
         .location-input { width: 100%; padding: 10px 14px; background: #141414; border: 1px solid var(--border-color); border-radius: 8px; color: white; font-family: 'Chakra Petch', sans-serif; font-size: 14px; }
@@ -71,6 +73,7 @@
 <body>
 
     <div class="top-header">
+        <img src="Logo.png" alt="Logo" class="header-logo">
         <h1>ระบบบันทึกพิกัดและนับจำนวนคน - เทศบาลเมืองประจวบคีรีขันธ์</h1>
     </div>
 
@@ -125,13 +128,12 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // รหัสล็อกประจำเครื่องคอมพิวเตอร์
-let myNodeId = localStorage.getItem('assigned_node_id');
-if (!myNodeId) {
-    const randomHex = Math.floor(Math.random() * 16777215).toString(16);
-    myNodeId = "node_pc_" + randomHex;
-    localStorage.setItem('assigned_node_id', myNodeId);
-}
+        let myNodeId = localStorage.getItem('assigned_node_id');
+        if (!myNodeId) {
+            const randomHex = Math.floor(Math.random() * 16777215).toString(16);
+            myNodeId = "node_pc_" + randomHex;
+            localStorage.setItem('assigned_node_id', myNodeId);
+        }
 
         let model = null, isTracking = false, startTime = null, timeInterval = null;
         let localPeopleCount = 0, trackedPeople = [];
@@ -185,7 +187,6 @@ if (!myNodeId) {
             }
         };
 
-        // ฟังก์ชันส่งบันทึกชื่อพิกัดสถานที่ + ละติจูด ลองจิจูด
         window.saveLocationCoordinates = function() {
             const locationName = document.getElementById('location-name-input').value.trim();
             if(!locationName) {
@@ -195,7 +196,7 @@ if (!myNodeId) {
 
             set(ref(database, `nodes/${myNodeId}`), {
                 node_id: myNodeId,
-                location_name: locationName, // บันทึกชื่อลงฐานข้อมูล
+                location_name: locationName, 
                 latitude: currentLat,
                 longitude: currentLng,
                 people_count: localPeopleCount,
@@ -239,7 +240,6 @@ if (!myNodeId) {
                             document.getElementById('local-count-text').innerText = localPeopleCount;
                             trackedPeople.push({ cx: det.cx, cy: det.cy, lastSeen: now });
                             
-                            // อัปเดตขึ้น Firebase
                             set(ref(database, `nodes/${myNodeId}/people_count`), localPeopleCount);
                         }
                     });
