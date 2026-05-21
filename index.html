@@ -47,19 +47,23 @@
         #ai-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; }
 
         /* ฝั่งขวา: แผงควบคุมและแผนที่พิกัดกล้อง */
-        .panel-side { flex: 0.8; background-color: var(--panel-bg); padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .panel-side { flex: 0.8; background-color: var(--panel-bg); padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
         
-        .counter-card { background: #141414; border: 1px solid #44403c; border-radius: 16px; padding: 20px; text-align: center; }
-        .counter-value { font-size: 64px; font-weight: 700; color: var(--gold); line-height: 1; margin: 10px 0; }
-        .timer-badge { font-size: 16px; color: #22c55e; background: rgba(34, 197, 94, 0.1); padding: 4px 12px; border-radius: 20px; display: inline-block; }
+        .counter-card { background: #141414; border: 1px solid #44403c; border-radius: 16px; padding: 15px; text-align: center; }
+        .counter-value { font-size: 54px; font-weight: 700; color: var(--gold); line-height: 1; margin: 8px 0; }
+        .timer-badge { font-size: 14px; color: #22c55e; background: rgba(34, 197, 94, 0.1); padding: 4px 12px; border-radius: 20px; display: inline-block; }
 
-        .action-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; border: none; border-radius: 12px; color: white; cursor: pointer; transition: background 0.2s; }
+        .action-btn { width: 100%; padding: 12px; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; color: white; cursor: pointer; transition: background 0.2s; }
         .btn-start { background: #0a84ff; }
         .btn-active { background: #ff453a; }
 
-        /* แผนที่พิกัดด้านล่าง */
-        .map-box-title { font-size: 14px; color: var(--text-muted); font-weight: 600; margin-top: 5px; }
-        #map-container { width: 100%; height: 220px; background: #000; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; }
+        /* ส่วนกล่องข้อมูลสถานที่และแผนที่ */
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; }
+        .form-group label { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .location-input { width: 100%; padding: 10px 14px; background: #141414; border: 1px solid var(--border-color); border-radius: 8px; color: white; font-family: 'Chakra Petch', sans-serif; font-size: 14px; }
+        .location-input:focus { border-color: var(--gold); outline: none; }
+
+        #map-container { width: 100%; height: 180px; background: #000; border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; margin-top: 5px; }
         .btn-save-loc { background: var(--gold); color: #000; }
         .btn-save-loc:hover { background: #facc15; }
     </style>
@@ -89,9 +93,17 @@
 
             <hr style="border:0; border-top:1px solid var(--border-color);">
             
-            <div class="map-box-title">📍 ระบุพิกัดที่ตั้งกล้องคอมพิวเตอร์เครื่องนี้ (ลากหมุดไปวางตำแหน่งจริง)</div>
-            <div id="map-container"></div>
-            <button class="action-btn btn-save-loc" onclick="saveLocationCoordinates()">💾 บันทึกตำแหน่งกล้องตรวจวัดนี้</button>
+            <div class="form-group">
+                <label>📍 1. ตั้งชื่อเรียกพิกัดพิกัด / สถานที่ติดตั้งกล้องนี้</label>
+                <input type="text" id="location-name-input" class="location-input" placeholder="เช่น ประตูทางเข้าหลัก, ศาลาชมวิวชายหาด">
+            </div>
+
+            <div class="form-group" style="margin-top: 5px;">
+                <label>🗺️ 2. ระบุตำแหน่งพิกัดแผนที่ (ลากหมุดไปวางตำแหน่งจริง)</label>
+                <div id="map-container"></div>
+            </div>
+
+            <button class="action-btn btn-save-loc" onclick="saveLocationCoordinates()">💾 บันทึกตำแหน่งและชื่อสถานที่กล้องนี้</button>
         </div>
     </div>
 
@@ -113,19 +125,18 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // ระบุ ID คอมพิวเตอร์ไม่ให้ซ้ำกัน (เช่น node_pc_01, node_pc_02)
+        // รหัสล็อกประจำเครื่องคอมพิวเตอร์
         const myNodeId = "node_pc_" + navigator.userAgent.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
 
         let model = null, isTracking = false, startTime = null, timeInterval = null;
         let localPeopleCount = 0, trackedPeople = [];
-        let currentLat = 11.8039, currentLng = 99.7961; // ศุนย์กลางประจวบฯ
+        let currentLat = 11.8039, currentLng = 99.7961; 
         let map, nodeMarker;
 
         function initMap() {
             map = L.map('map-container').setView([currentLat, currentLng], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-            // สร้างหมุดที่สามารถลาก (Draggable) ได้เพื่อปรับตำแหน่งคอมพิวเตอร์
             nodeMarker = L.marker([currentLat, currentLng], { draggable: true }).addTo(map);
             nodeMarker.on('dragend', function (e) {
                 const position = nodeMarker.getLatLng();
@@ -143,7 +154,7 @@
                 btn.innerText = "▶️ เริ่มนับจำนวนคน";
                 btn.disabled = false;
                 runPredictionEngine();
-            } catch (err) { alert("ไม่พบกล้องเว็บแคมภายนอก"); }
+            } catch (err) { alert("ไม่พบกล้องเว็บแคม"); }
         }
 
         window.toggleTrackingSession = function() {
@@ -169,14 +180,22 @@
             }
         };
 
+        // ฟังก์ชันส่งบันทึกชื่อพิกัดสถานที่ + ละติจูด ลองจิจูด
         window.saveLocationCoordinates = function() {
+            const locationName = document.getElementById('location-name-input').value.trim();
+            if(!locationName) {
+                alert("กรุณากรอกระบุชื่อเรียกพิกัดสถานที่ตั้งกล้องก่อนบันทึก!");
+                return;
+            }
+
             set(ref(database, `nodes/${myNodeId}`), {
                 node_id: myNodeId,
+                location_name: locationName, // บันทึกชื่อลงฐานข้อมูล
                 latitude: currentLat,
                 longitude: currentLng,
                 people_count: localPeopleCount,
                 timestamp: Date.now()
-            }).then(() => alert("บันทึกพิกัดตั้งกล้องคอมพิวเตอร์ขึ้นระบบแล้ว!"))
+            }).then(() => alert("💾 บันทึกพิกัดและชื่อสถานที่ '" + locationName + "' เรียบร้อยแล้ว!"))
               .catch(err => alert("Error: " + err.message));
         };
 
@@ -215,7 +234,7 @@
                             document.getElementById('local-count-text').innerText = localPeopleCount;
                             trackedPeople.push({ cx: det.cx, cy: det.cy, lastSeen: now });
                             
-                            // ส่งจำนวนที่นับซิงก์ขึ้น Database อัตโนมัติแบบเรียลไทม์
+                            // อัปเดตขึ้น Firebase
                             set(ref(database, `nodes/${myNodeId}/people_count`), localPeopleCount);
                         }
                     });
